@@ -1,0 +1,4 @@
+-keep class viettel.cyberspace.assitant.activity.LoginActivity
+-keep class viettel.cyberspace.assitant.activity.ChatBotActivity
+-keep class viettel.cyberspace.assitant.activity.ChatViewActivity
+
