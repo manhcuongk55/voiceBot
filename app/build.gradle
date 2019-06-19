@@ -54,7 +54,9 @@ android {
 
     buildTypes {
         debug {
-            minifyEnabled false
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+
         }
         release {
             minifyEnabled true
@@ -107,7 +109,7 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     // Support libraries
     //noinspection GradleCompatible
-    implementation 'com.android.support:appcompat-v7:27.1.1'
+    implementation 'com.android.support:appcompat-v7:28.0.0'
     implementation "com.android.support:cardview-v7:28.0.0"
     implementation "com.android.support:recyclerview-v7:28.0.0"
     implementation "com.android.support:design:28.0.0"
@@ -128,11 +130,12 @@ dependencies {
     implementation 'com.michaelpardo:activeandroid:3.1.0-SNAPSHOT'
     implementation 'me.everything:overscroll-decor-android:1.0.4'
     // gRPC
-    implementation "io.grpc:grpc-okhttp:1.21.0"
-    implementation "io.grpc:grpc-protobuf-lite:1.21.0"
-    implementation "io.grpc:grpc-stub:1.21.0"
     implementation 'javax.annotation:javax.annotation-api:1.2'
-    implementation 'com.google.protobuf:protobuf-java:3.4.0'
+    implementation 'io.grpc:grpc-protobuf-lite:1.21.0'
+    implementation 'io.grpc:grpc-okhttp:1.21.0'
+    implementation 'io.grpc:grpc-stub:1.21.0'
+    protobuf 'com.google.protobuf:protobuf-java:3.3.1'
+
     implementation 'org.codehaus.jackson:jackson-mapper-asl:1.9.10'
     // OAuth2 for Google API
     implementation('com.google.auth:google-auth-library-oauth2-http:0.7.0') {
@@ -155,6 +158,7 @@ dependencies {
     implementation group: 'org.codehaus.jackson', name: 'jackson-mapper-asl', version: '1.9.10'
 
     implementation 'org.tensorflow:tensorflow-android:1.13.1'
+    compile 'com.android.support:support-annotations:28.0.0'
 
 }
 
