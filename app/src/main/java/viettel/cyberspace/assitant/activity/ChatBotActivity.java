@@ -352,15 +352,15 @@ public class ChatBotActivity extends AppCompatActivity implements StopRecordList
     protected void onStart() {
         try {
             voiceClient = null;
-            voiceClient = new VoiceClient(MySharePreferenceVoice.getHost(getApplicationContext()),
-                    MySharePreferenceVoice.getPort(getApplicationContext()),
+            voiceClient = new VoiceClient("asr.kiki.laban.vn",
+                    443,
                     MySharePreferenceVoice.isParseJson(getApplicationContext()),
                     mIsLienTuc,
                     MySharePreferenceVoice.is16kHz(getApplicationContext()));
             voiceClient.setStopRecordListener(this);
             voiceClient.setChangeAdapterListener(this);
         } catch (Exception e) {
-            // showDialog("Host or port is wrong. Please check carefully");
+            e.printStackTrace();
         }
         super.onStart();
     }

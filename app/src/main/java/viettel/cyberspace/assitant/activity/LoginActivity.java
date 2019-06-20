@@ -48,47 +48,9 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
-
         Intent intent = new Intent(this, ChatBotActivity.class);
         startActivity(intent);
         finish();
-
-       /* User user = StorageManager.getUser(this);
-        if (user != null) {
-            Intent intent = new Intent(this, ChatBotActivity.class);
-            startActivity(intent);
-            finish();
-        }
-        context = this;
-
-*//*        String refreshedToken = FirebaseInstanceId.getInstance().getToken();
-        Log.v("trungbd", refreshedToken.toString());*//*
-
-
-        signin = findViewById(R.id.signin);
-        account = findViewById(R.id.account);
-
-        password = findViewById(R.id.password);
-
-        account.setText("experts_1");
-        password.setText("123456aA@");
-
-        signin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (account.getText().toString().equals("") || password.getText().toString().equals("")) {
-                    Toast.makeText(getBaseContext(), "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!", Toast.LENGTH_LONG).show();
-                    return;
-                } else {
-                    progressDialog = ProgressDialog.show(context, "Vui lòng đợi",
-                            "Đang đăng nhập...", true);
-                    Login(account.getText().toString(), password.getText().toString());
-                }
-
-            }
-        });
-*/
-
     }
 
 
