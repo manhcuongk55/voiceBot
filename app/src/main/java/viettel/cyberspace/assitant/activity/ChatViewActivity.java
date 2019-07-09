@@ -20,7 +20,6 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
-import android.widget.TextView;
 
 import com.balysv.materialripple.MaterialRippleLayout;
 import com.github.zagum.expandicon.ExpandIconView;
@@ -28,9 +27,6 @@ import com.google.cloud.android.speech.MessageDialogFragment;
 import com.google.cloud.android.speech.R;
 import com.google.cloud.android.speech.SpeechService;
 import com.google.cloud.android.speech.VoiceRecorder;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.iid.FirebaseInstanceId;
-import com.google.firebase.messaging.FirebaseMessaging;
 import com.wang.avi.AVLoadingIndicatorView;
 import com.zhihu.matisse.Matisse;
 import com.zhihu.matisse.MimeType;
@@ -48,13 +44,16 @@ import chatview.widget.ChatView;
 public class ChatViewActivity extends AppCompatActivity implements MessageDialogFragment.Listener {
 
 
-    HorizontalScrollView moreHSV;
-    ExpandIconView expandIconView;
-    MaterialRippleLayout galleryMRL;
+    private static final String FRAGMENT_MESSAGE_DIALOG = "message_dialog";
+    private static final String STATE_RESULTS = "results";
+    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
     public static int imagePickerRequestCode = 10;
     public static int SELECT_VIDEO = 11;
     public static int CAMERA_REQUEST = 12;
     public static int SELECT_AUDIO = 13;
+    HorizontalScrollView moreHSV;
+    ExpandIconView expandIconView;
+    MaterialRippleLayout galleryMRL;
     ChatView chatView;
     ImageView sendIcon;
     EditText messageET;
@@ -63,16 +62,21 @@ public class ChatViewActivity extends AppCompatActivity implements MessageDialog
     List<Uri> mSelected;
     MaterialRippleLayout micMRL;
     AVLoadingIndicatorView avi;
-
-
-    private static final String FRAGMENT_MESSAGE_DIALOG = "message_dialog";
-
-    private static final String STATE_RESULTS = "results";
-
-    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
-
     private SpeechService mSpeechService;
+    private final ServiceConnection mServiceConnection = new ServiceConnection() {
 
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder binder) {
+            mSpeechService = SpeechService.from(binder);
+            mSpeechService.addListener(mSpeechServiceListener);
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            mSpeechService = null;
+        }
+
+    };
     private VoiceRecorder mVoiceRecorder;
     private final VoiceRecorder.Callback mVoiceCallback = new VoiceRecorder.Callback() {
 
@@ -98,31 +102,83 @@ public class ChatViewActivity extends AppCompatActivity implements MessageDialog
         }
 
     };
+    private final SpeechService.Listener mSpeechServiceListener =
+            new SpeechService.Listener() {
+                @Override
+                public void onSpeechRecognized(final String text, final boolean isFinal) {
+                    Log.i("duypq3", "text=" + text + "  isFinal  = " + isFinal);
 
-    // Resource caches
-    private int mColorHearing;
-    private int mColorNotHearing;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (isFinal) {
+                                setEnableVoidButton(true);
+                                micMRL.setEnabled(false);
+                                micMRL.setAlpha(0.4f);
+                                messageET.setText(text);
 
+                                if (switchbool) {
+                                    Message message = new Message();
+                                    message.setMessageType(Message.MessageType.LeftSimpleMessage);
+                                    message.setTime(getTime());
+                                    message.setUserName("Groot");
+                                    message.setBody(text);
+                                    message.setUserIcon(Uri.parse("android.resource://com.shrikanthravi.chatviewlibrary/drawable/groot"));
+                                    chatView.addMessage(message);
+                                    switchbool = false;
+                                } else {
+                                    Message message = new Message();
+
+                                    message.setMessageType(Message.MessageType.RightSimpleImage);
+                                    message.setTime(getTime());
+                                    message.setUserName("Hodor");
+                                    message.setBody(text);
+                                    message.setUserIcon(Uri.parse("android.resource://com.shrikanthravi.chatviewlibrary/drawable/hodor"));
+                                    chatView.addMessage(message);
+                                    switchbool = true;
+                                }
+                                messageET.setText("");
+                            } else {
+                                messageET.setText(text);
+                            }
+                            if (messageET.getText().toString().length() != 0)
+                                messageET.setSelection(messageET.getText().toString().length());
+                        }
+                    });
+
+                    if (isFinal) {
+                        Long s1 = System.currentTimeMillis();
+                        stopVoiceRecorder();
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                micMRL.setEnabled(true);
+                                micMRL.setAlpha(1.0f);
+                            }
+                        });
+                        Log.i("duypq4", "time1=" + (System.currentTimeMillis() - s1));
+                    }
+                }
+            };
     // View references
 //    private TextView mStatus;
 //    private TextView mText;
 //    private RecyclerView mRecyclerView;
+    // Resource caches
+    private int mColorHearing;
+    private int mColorNotHearing;
 
-    private final ServiceConnection mServiceConnection = new ServiceConnection() {
-
-        @Override
-        public void onServiceConnected(ComponentName componentName, IBinder binder) {
-            mSpeechService = SpeechService.from(binder);
-            mSpeechService.addListener(mSpeechServiceListener);
+    public static String getRandomText() {
+        Random generator = new Random();
+        StringBuilder randomStringBuilder = new StringBuilder();
+        int randomLength = generator.nextInt(30);
+        char tempChar;
+        for (int i = 0; i < randomLength; i++) {
+            tempChar = (char) (generator.nextInt(96) + 32);
+            randomStringBuilder.append(tempChar);
         }
-
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            mSpeechService = null;
-        }
-
-    };
-
+        return randomStringBuilder.toString();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -244,7 +300,6 @@ public class ChatViewActivity extends AppCompatActivity implements MessageDialog
 
     }
 
-
     @Override
     protected void onPause() {
         super.onPause();
@@ -258,27 +313,12 @@ public class ChatViewActivity extends AppCompatActivity implements MessageDialog
 
     }
 
-
     public String getTime() {
         java.util.Calendar calendar = java.util.Calendar.getInstance();
         SimpleDateFormat mdformat = new SimpleDateFormat("dd MMM yyyy HH:mm");
         String time = mdformat.format(calendar.getTime());
         return time;
     }
-
-
-    public static String getRandomText() {
-        Random generator = new Random();
-        StringBuilder randomStringBuilder = new StringBuilder();
-        int randomLength = generator.nextInt(30);
-        char tempChar;
-        for (int i = 0; i < randomLength; i++) {
-            tempChar = (char) (generator.nextInt(96) + 32);
-            randomStringBuilder.append(tempChar);
-        }
-        return randomStringBuilder.toString();
-    }
-
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -440,7 +480,6 @@ public class ChatViewActivity extends AppCompatActivity implements MessageDialog
 
     }
 
-
     public String getPathVideo(Uri uri) {
         System.out.println("getpath " + uri.toString());
         String[] projection = {MediaStore.Video.Media.DATA};
@@ -464,7 +503,6 @@ public class ChatViewActivity extends AppCompatActivity implements MessageDialog
         } else return null;
     }
 
-
     @Override
     public void onMessageDialogDismissed() {
         ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO},
@@ -475,66 +513,6 @@ public class ChatViewActivity extends AppCompatActivity implements MessageDialog
     public void onPointerCaptureChanged(boolean hasCapture) {
 
     }
-
-
-    private final SpeechService.Listener mSpeechServiceListener =
-            new SpeechService.Listener() {
-                @Override
-                public void onSpeechRecognized(final String text, final boolean isFinal) {
-                    Log.i("duypq3", "text=" + text + "  isFinal  = " + isFinal);
-
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (isFinal) {
-                                setEnableVoidButton(true);
-                                micMRL.setEnabled(false);
-                                micMRL.setAlpha(0.4f);
-                                messageET.setText(text);
-
-                                if (switchbool) {
-                                    Message message = new Message();
-                                    message.setMessageType(Message.MessageType.LeftSimpleMessage);
-                                    message.setTime(getTime());
-                                    message.setUserName("Groot");
-                                    message.setBody(text);
-                                    message.setUserIcon(Uri.parse("android.resource://com.shrikanthravi.chatviewlibrary/drawable/groot"));
-                                    chatView.addMessage(message);
-                                    switchbool = false;
-                                } else {
-                                    Message message = new Message();
-
-                                    message.setMessageType(Message.MessageType.RightSimpleImage);
-                                    message.setTime(getTime());
-                                    message.setUserName("Hodor");
-                                    message.setBody(text);
-                                    message.setUserIcon(Uri.parse("android.resource://com.shrikanthravi.chatviewlibrary/drawable/hodor"));
-                                    chatView.addMessage(message);
-                                    switchbool = true;
-                                }
-                                messageET.setText("");
-                            } else {
-                                messageET.setText(text);
-                            }
-                            if (messageET.getText().toString().length() != 0)
-                                messageET.setSelection(messageET.getText().toString().length());
-                        }
-                    });
-
-                    if (isFinal) {
-                        Long s1 = System.currentTimeMillis();
-                        stopVoiceRecorder();
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                micMRL.setEnabled(true);
-                                micMRL.setAlpha(1.0f);
-                            }
-                        });
-                        Log.i("duypq4", "time1=" + (System.currentTimeMillis() - s1));
-                    }
-                }
-            };
 
     public void setEnableVoidButton(boolean isEnable) {
         if (isEnable) {

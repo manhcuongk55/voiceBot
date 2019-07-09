@@ -21,3 +21,6 @@
 -dontwarn com.google.errorprone.annotations.**
 -keep class io.grpc.internal.DnsNameResolveProvider
 -keep class io.grpc.okhttp.OkHttpChannelProvider
+-keepclassmembers class * {
+    private <fields>;
+}
