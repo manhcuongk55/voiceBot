@@ -352,8 +352,8 @@ public class ChatBotActivity extends AppCompatActivity implements StopRecordList
     protected void onStart() {
         try {
             voiceClient = null;
-            voiceClient = new VoiceClient("asr.kiki.laban.vn",
-                    443,
+            voiceClient = new VoiceClient("123.31.18.120",
+                    50051,
                     MySharePreferenceVoice.isParseJson(getApplicationContext()),
                     mIsLienTuc,
                     MySharePreferenceVoice.is16kHz(getApplicationContext()));

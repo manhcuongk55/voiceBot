@@ -22,10 +22,13 @@ import service.TextReply;
 import service.VoiceRequest;
 import viettel.cyberspace.speechrecognize.speedtotextcyberspace.UtilsVoice;
 import viettel.cyberspace.speechrecognize.speedtotextcyberspace.audio.Recorder;
+import voice.VoiceBotGrpc;
+import voice.VoiceBotRequest;
+import voice.VoiceBotResponse;
 
 public class VoiceClient extends STTService {
     public final String TAG = "VoiceClient";
-    private final StreamVoiceGrpc.StreamVoiceStub asyncStub;
+    private final VoiceBotGrpc.VoiceBotStub asyncStub;
     private final ManagedChannel channel;
     private int timeOut;
     private boolean isParse;
@@ -37,7 +40,7 @@ public class VoiceClient extends STTService {
         this(ManagedChannelBuilder.forAddress(host, port)
                 // Channels are secure by default (via SSL/TLS). For the example we disable TLS to avoid
                 // needing certificates.
-                //.usePlaintext()
+                .usePlaintext()
                 .build(), is16kHz);
         this.isParse = isParse;
         this.mIsLienTuc = isLienTuc;
@@ -53,7 +56,7 @@ public class VoiceClient extends STTService {
 
         header.put(Metadata.Key.of("format", Metadata.ASCII_STRING_MARSHALLER), "S16LE");
         header.put(Metadata.Key.of("single_sentence", Metadata.ASCII_STRING_MARSHALLER), mIsLienTuc + "");
-        asyncStub = MetadataUtils.attachHeaders(StreamVoiceGrpc.newStub(channel), header);
+        asyncStub = MetadataUtils.attachHeaders(VoiceBotGrpc.newStub(channel), header);
     }
 
     private void shutdown() throws InterruptedException {
@@ -79,14 +82,14 @@ public class VoiceClient extends STTService {
         Log.d("duy8k", "record: is16kHz= " + mIs16kHz);
         try {
             //dùng để khởi tạo 1 phiên ASR ở server
-            StreamObserver<VoiceRequest> request = asyncStub.sendVoice(new StreamObserverImpl());
+            StreamObserver<VoiceBotRequest> request = asyncStub.callToBot(new StreamObserverImpl());
             short[] byte_buff_short = new short[sizeData];
             int byteRead = 0;
             while (recorder != null && (byteRead = recorder.read(byte_buff_short, 0, byte_buff_short.length)) != -1 && isRecording) {
                 byte[] byte_buff = short2byte(byte_buff_short);
                 Log.d(TAG, "record: sending message " + byteRead);
                 //fos.write(byte_buff);
-                request.onNext(VoiceRequest.newBuilder().setByteBuff(ByteString.copyFrom(byte_buff)).build());
+                request.onNext(VoiceBotRequest.newBuilder().setAudioContent(ByteString.copyFrom(byte_buff)).build());
                 timeOut--;
                 Log.d(TAG, "record: " + timeOut);
                 if (timeOut == 0) {
@@ -94,7 +97,7 @@ public class VoiceClient extends STTService {
                     stopRecognize();
                 }
             }
-            request.onCompleted();
+            //request.onCompleted();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -106,7 +109,7 @@ public class VoiceClient extends STTService {
         final CountDownLatch finishLatch = new CountDownLatch(1);
         try {
             BufferedInputStream bi = new BufferedInputStream(new FileInputStream(file));
-            StreamObserver<VoiceRequest> request = asyncStub.sendVoice(new StreamObserverImpl());
+            StreamObserver<VoiceBotRequest> request = asyncStub.callToBot(new StreamObserverImpl());
             Log.d("duy8k", "sendFile: is16kHz= " + mIs16kHz);
             byte[] byte_buff = null;
             int sizeDataSend = 0;
@@ -120,13 +123,13 @@ public class VoiceClient extends STTService {
             boolean start_sent = false;
             //dùng để khởi tạo 1 phiên ASR ở server
             while (bi.read(byte_buff, 0, byte_buff.length) != -1) {
-                request.onNext(VoiceRequest.newBuilder().setByteBuff(ByteString.copyFrom(byte_buff)).build());
+                request.onNext(VoiceBotRequest.newBuilder().setAudioContent(ByteString.copyFrom(byte_buff)).build());
                 Thread.sleep(250);
             }
             for (int i = 0; i < 5; i++) {
                 try {
                     Thread.sleep(5000);
-                    request.onNext(VoiceRequest.newBuilder().setByteBuff(ByteString.copyFrom(new byte[sizeDataSend])).build());
+                    request.onNext(VoiceBotRequest.newBuilder().setAudioContent(ByteString.copyFrom(byte_buff)).build());
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -143,31 +146,32 @@ public class VoiceClient extends STTService {
     }
 
     //TODO::   class impl text response master server trả về
-    public class StreamObserverImpl implements StreamObserver<TextReply> {
+    public class StreamObserverImpl implements StreamObserver<VoiceBotResponse> {
         @Override
-        public void onNext(TextReply textReply) {
+        public void onNext(VoiceBotResponse voiceBotResponse) {
             //nhận được onNext thì tiếp tục chờ
             timeOut = UtilsVoice.timeOut / 250;
             //nhận được tín hiệu kết thúc câu
-            if (textReply == null || !isRecording) return;
+            if (voiceBotResponse == null || !isRecording) return;
 
-            changeAdapterListener.change(textReply.getResult().getHypotheses(0).getTranscriptNormed());
+            changeAdapterListener.change(voiceBotResponse.getText());
 
-            if (textReply.getResult().getFinal()) {
+            /*if (voiceBotResponse.getText() != null) {
                 Log.d(TAG, "onNext: final signal");
                 //  stopRecognize();
-                changeAdapterListener.finish(textReply.getResult().getHypotheses(0).getTranscriptNormed());
+                changeAdapterListener.finish(voiceBotResponse.getText());
 
                 return;
-            }
+            }*/
 
 
-            Log.d(TAG, "onNext: text = " + textReply.getResult().getHypotheses(0).getTranscriptNormed());
+            Log.d(TAG, "onNext: text = " + voiceBotResponse.getText());
 
-            Log.i("duypq3", "onNext: text = " + textReply.getResult().getHypotheses(0).getTranscriptNormed());
+            Log.i("duypq3", "onNext: text = " + voiceBotResponse.getText());
             // changeAdapterListener.change(textReply.getResult().getHypotheses(0).getTranscriptNormed());
 
         }
+
 
         @Override
         public void onError(Throwable throwable) {
